@@ -11,7 +11,63 @@ class MoviesController < ApplicationController
   end
 
   def index
-    @movies = Movie.all
+    @all_ratings = Movie.pluck(:rating).uniq
+    @checked_boxes = Hash.new(true)
+    @all_ratings.each{|r| @checked_boxes[r] = true}
+
+    id = params[:id]
+
+    if id == "title_header"
+      @movies = Movie.all.order(:title)
+      @title_class = "hilite";
+      session[:id] = id
+      session.delete(:ratings_)
+    elsif id == "release_date_header"
+      @movies = Movie.all.order(:release_date)
+      @release_class = "hilite"
+      session[:id] = id
+      session.delete(:ratings_)
+    else
+      if params[:ratings_].present?
+        session.delete(:id)
+      end
+      if session[:id].present?
+        if session[:id] == "title_header"
+          @movies = Movie.all.order(:title)
+          @title_class = "hilite"
+        elsif session[:id] == "release_date_header"
+          @movies = Movie.all.order(:release_date)
+          @release_class = "hilite"
+        end
+        flash.keep
+        redirect_to :id => session[:id]
+      else
+        @movies = Movie.all
+      end
+    end
+
+    if params[:ratings_].present?
+      rs = params[:ratings_].keys
+      if rs.empty?
+        if session[:ratings_].present?
+          rs = session[:ratings_].keys
+          @checked_boxes = params[:ratings_]
+        end
+      else
+        @checked_boxes = params[:ratings_]
+      end
+      @movies = Movie.where(rating: rs)
+      session[:ratings_] = @checked_boxes
+    else
+      if session[:ratings_].present?
+        rs = session[:ratings_].keys
+        @checked_boxes = session[:ratings_]
+        @movies = Movie.where(rating: rs)
+        flash.keep
+        redirect_to :ratings_ => session[:ratings_]
+      end
+    end
+
   end
 
   def new
